@@ -1,0 +1,8 @@
+streamlit
+transformers
+torch
+opencv-python
+pandas
+pillow
+matplotlib
+streamlit-folium 
