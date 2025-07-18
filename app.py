@@ -22,7 +22,7 @@ init_reports()
 # Load sentiment analysis pipeline once
 @st.cache_resource
 def get_sentiment_pipeline():
-    return pipeline("sentiment-analysis")
+    return pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
 
 sentiment_pipeline = get_sentiment_pipeline()
 
@@ -51,7 +51,16 @@ if page == "Report Crime":
         # Run sentiment analysis
         if description.strip():
             sentiment_result = sentiment_pipeline(description)[0]
-            sentiment = f"{sentiment_result['label']} (score: {sentiment_result['score']:.2f})"
+            label = sentiment_result['label']
+            # Map star rating to sentiment
+            star_to_sentiment = {
+                '1 star': 'Very Negative',
+                '2 stars': 'Negative',
+                '3 stars': 'Neutral',
+                '4 stars': 'Positive',
+                '5 stars': 'Very Positive',
+            }
+            sentiment = f"{star_to_sentiment.get(label, label)} (score: {sentiment_result['score']:.2f})"
         else:
             sentiment = "No description provided"
         # Run object detection if image is uploaded
