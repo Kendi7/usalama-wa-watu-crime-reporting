@@ -60,9 +60,21 @@ if page == "Report Crime":
                 '4 stars': 'Positive',
                 '5 stars': 'Very Positive',
             }
-            sentiment = f"{star_to_sentiment.get(label, label)} (score: {sentiment_result['score']:.2f})"
+            sentiment_label = star_to_sentiment.get(label, label)
+            sentiment = f"{sentiment_label} (score: {sentiment_result['score']:.2f})"
+            # Map sentiment to urgency and emoji
+            sentiment_to_urgency = {
+                'Very Negative': ('High', '🚨'),
+                'Negative': ('Medium-High', '⚠️'),
+                'Neutral': ('Medium/Low', '🟡'),
+                'Positive': ('Low', '✅'),
+                'Very Positive': ('Very Low', '🎉'),
+            }
+            urgency, urgency_emoji = sentiment_to_urgency.get(sentiment_label, ('Medium/Low', '🟡'))
         else:
             sentiment = "No description provided"
+            urgency = "Unknown"
+            urgency_emoji = "❓"
         # Run object detection if image is uploaded
         detected_objects = "No image uploaded"
         img_path = None
@@ -85,11 +97,13 @@ if page == "Report Crime":
             "location": location,
             "contact": contact,
             "sentiment": sentiment,
+            "urgency": f"{urgency} {urgency_emoji}",
             "objects": detected_objects
         }
         st.session_state['reports'].append(report)
         st.success("Report submitted!")
         st.markdown(f"**Sentiment Analysis:** {sentiment}")
+        st.markdown(f"**Urgency Level:** {urgency} {urgency_emoji}")
         st.markdown(f"**Detected Objects:** {detected_objects}")
         st.write(report)
 
@@ -135,6 +149,7 @@ elif page == "View Reports":
                 color = 'blue'
             popup = folium.Popup(f"<b>Description:</b> {row['description']}<br>"
                                  f"<b>Sentiment:</b> {row['sentiment']}<br>"
+                                 f"<b>Urgency:</b> {row.get('urgency', '')}<br>"
                                  f"<b>Objects:</b> {row['objects']}<br>"
                                  f"<b>Contact:</b> {row['contact']}", max_width=300)
             folium.Marker(
