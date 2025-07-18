@@ -36,19 +36,15 @@ A simple Streamlit web app for reporting crimes in Nairobi County, powered by AI
 1  Star (Very Negative)
 "A group of armed men broke into my house last night and threatened my family. We are traumatized and scared for our lives."
 "There was a violent robbery at the shop near my home. The attackers beat up the cashier and stole everything."
-
-2 Stars (Negative)
 "Someone snatched my phone in town. I tried to shout for help but nobody responded."
 "My car was vandalized in the parking lot. This is the second time it has happened this month."
 
-3 Stars (Neutral)
+2 Stars (Neutral)
 "I saw a suspicious person loitering around the estate. Not sure if anything happened, but it looked odd."
 "There was a minor argument between two people on the street, but it didn’t escalate."
 
-4 Stars (Positive)
+5 Stars (Very Positive)
 "A lost child was found near the bus stop and safely reunited with their parents."
 "I witnessed a traffic accident, but thankfully no one was seriously injured and help arrived quickly."
-
-5 Stars (Very Positive)
 "A community group organized a clean-up and safety patrol in our neighborhood, making everyone feel safer."
 "I saw police officers helping an elderly woman cross the busy road. It was heartwarming to see such kindness."
