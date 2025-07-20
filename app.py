@@ -152,17 +152,24 @@ def login():
     st.subheader('Login')
     username = st.text_input('Username', key='login_username')
     password = st.text_input('Password', type='password', key='login_password')
+    # Use a less common password to avoid browser breach warnings
+    ADMIN_USERNAME = 'admin'
+    ADMIN_PASSWORD = 'Admin!2024Secure'  # Change to a strong, unique password
     if st.button('Login', key='login_button'):
-        if username == 'admin' and password == 'admin123':
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             st.session_state['logged_in'] = True
             st.success('Login successful!')
             st.rerun()
         else:
             st.error('Invalid credentials')
+    # Display admin credentials below the login form
+    st.info(f"Admin Login - Username: {ADMIN_USERNAME} | Password: {ADMIN_PASSWORD}")
     return st.session_state.get('logged_in', False)
 
 # Sidebar navigation
 page = st.sidebar.radio("Go to", ["Report Crime", "View Reports"])
+
+# Sidebar now only contains the navigation radio button
 
 if page == "Report Crime":
     # Show toast if flag is set
@@ -294,6 +301,46 @@ elif page == "View Reports":
         st.info("No reports yet.")
     else:
         df = pd.DataFrame(reports)
+        # --- Summary Stats ---
+        st.subheader("Report Summary")
+        colA, colB, colC, colD = st.columns(4)
+        with colA:
+            st.metric("Total Reports", len(df))
+        with colB:
+            st.metric("High Urgency", (df['urgency'].str.contains('High')).sum())
+        with colC:
+            st.metric("Unique Locations", df['location'].nunique())
+        with colD:
+            st.metric("Very Negative Sentiment", (df['sentiment'].str.contains('Very Negative')).sum())
+        # --- PDF Download Feature ---
+        import io
+        from reportlab.lib.pagesizes import letter
+        from reportlab.pdfgen import canvas
+        def create_pdf(dataframe):
+            buffer = io.BytesIO()
+            c = canvas.Canvas(buffer, pagesize=letter)
+            width, height = letter
+            c.setFont("Helvetica-Bold", 14)
+            c.drawString(30, height - 40, "Nairobi County Crime Reports")
+            c.setFont("Helvetica", 10)
+            y = height - 70
+            for i, row in dataframe.iterrows():
+                text = f"Location: {row['location']} | Sentiment: {row['sentiment']} | Urgency: {row['urgency']} | Desc: {row['description'][:50]}"
+                c.drawString(30, y, text)
+                y -= 18
+                if y < 50:
+                    c.showPage()
+                    y = height - 40
+            c.save()
+            buffer.seek(0)
+            return buffer
+        pdf_buffer = create_pdf(df)
+        st.download_button(
+            label="Download Reports as PDF",
+            data=pdf_buffer,
+            file_name="crime_reports.pdf",
+            mime="application/pdf"
+        )
         # --- Filter Controls ---
         st.subheader("Filter Reports")
         col1, col2, col3 = st.columns(3)

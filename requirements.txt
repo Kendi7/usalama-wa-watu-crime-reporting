@@ -68,6 +68,6 @@ urllib3==2.5.0
 watchdog==6.0.0
 xyzservices==2025.4.0
 python-dotenv==1.0.1
-# Add your Hugging Face API key to your .env file as:
-# HUGGINGFACE_API_KEY=your_hf_token_here
+
+reportlab==4.2.0
    
