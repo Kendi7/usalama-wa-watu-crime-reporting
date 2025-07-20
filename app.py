@@ -7,6 +7,11 @@ import torch
 from streamlit_folium import st_folium
 import folium
 from ultralytics import YOLO
+import base64
+import requests
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env file
+from transformers import VisionEncoderDecoderModel, ViTImageProcessor, AutoTokenizer
 
 st.set_page_config(page_title="Nairobi Crime Reporting AI App", layout="wide")
 
@@ -32,6 +37,24 @@ def get_yolo_model():
     return YOLO('yolov8n.pt')
 
 yolo_model = get_yolo_model()
+
+# Add local image captioning model loader and function
+@st.cache_resource
+def get_captioning_model():
+    model = VisionEncoderDecoderModel.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
+    feature_extractor = ViTImageProcessor.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
+    tokenizer = AutoTokenizer.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
+    return model, feature_extractor, tokenizer
+
+def get_local_image_caption(image_path):
+    model, feature_extractor, tokenizer = get_captioning_model()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    image = Image.open(image_path).convert("RGB")
+    pixel_values = feature_extractor(images=[image], return_tensors="pt").pixel_values.to(device)
+    output_ids = model.generate(pixel_values, max_length=16)  # greedy decoding only
+    caption = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+    return caption
 
 # Sidebar navigation
 page = st.sidebar.radio("Go to", ["Report Crime", "View Reports"])
@@ -86,6 +109,7 @@ if page == "Report Crime":
         # Run object detection if image is uploaded
         detected_objects = "No image uploaded"
         img_path = None
+        image_sentiment = "No image uploaded"
         if image:
             img_path = os.path.join("uploads", image.name)
             os.makedirs("uploads", exist_ok=True)
@@ -99,6 +123,8 @@ if page == "Report Crime":
                     for c in r.boxes.cls:
                         labels.add(r.names[int(c)])
             detected_objects = ', '.join(labels) if labels else 'No objects detected'
+            # Local image captioning (as sentiment proxy)
+            image_sentiment = get_local_image_caption(img_path)
         report = {
             "description": description,
             "image": img_path,
@@ -106,11 +132,13 @@ if page == "Report Crime":
             "contact": contact,
             "sentiment": sentiment,
             "urgency": f"{urgency} {urgency_emoji}",
-            "objects": detected_objects
+            "objects": detected_objects,
+            "image_sentiment": image_sentiment
         }
         st.session_state['reports'].append(report)
         st.success("Report submitted!")
         st.markdown(f"**Sentiment Analysis:** {sentiment}")
+        st.markdown(f"**Image Sentiment:** {image_sentiment}")
         st.markdown(f"**Urgency Level:** {urgency} {urgency_emoji}")
         st.markdown(f"**Detected Objects:** {detected_objects}")
         st.write(report)
@@ -163,13 +191,7 @@ elif page == "View Reports":
                     st.write("No image uploaded.")
                 # Show other details below the image
                 details = f"""
-                **Description:** {row['description']}  
-                **Location:** {row['location']}  
-                **Contact:** {row['contact']}  
-                **Sentiment:** {row['sentiment']}  
-                **Urgency:** {row.get('urgency', '')}  
-                **Objects:** {row['objects']}  
-                """
+                **Description:** {row['description']}  \n                **Location:** {row['location']}  \n                **Contact:** {row['contact']}  \n                **Sentiment:** {row['sentiment']}  \n                **Image Sentiment:** {row.get('image_sentiment', 'N/A')}  \n                **Urgency:** {row.get('urgency', '')}  \n                **Objects:** {row['objects']}  \n                """
                 st.markdown(details)
         # Map visualization
         # Nairobi center coordinates
