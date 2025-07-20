@@ -61,6 +61,14 @@ if page == "Report Crime":
                 '5 stars': 'Very Positive',
             }
             sentiment_label = star_to_sentiment.get(label, label)
+            # --- Custom logic for negative keywords ---
+            negative_keywords = [
+                'attack', 'kill', 'robbery', 'assault', 'theft', 'violence', 'murder', 'rape', 'shooting', 'stab',
+                'injury', 'danger', 'threat', 'gun', 'knife', 'explosion', 'bomb', 'terror', 'crime', 'goon', 'gang',
+                'thief', 'hijack', 'kidnap', 'abduct', 'arson', 'riot', 'fight', 'abuse', 'molest', 'harass', 'rape'
+            ]
+            if (sentiment_label in ['Positive', 'Very Positive'] and any(word in description.lower() for word in negative_keywords)):
+                sentiment_label = 'Very Negative'
             sentiment = f"{sentiment_label} (score: {sentiment_result['score']:.2f})"
             # Map sentiment to urgency and emoji
             sentiment_to_urgency = {
