@@ -17,6 +17,14 @@ st.set_page_config(page_title="Nairobi Crime Reporting AI App", layout="wide")
 
 st.title("Nairobi County Crime Reporting System (AI-Powered)")
 
+# Show a large, prominent success banner after report submission
+if st.session_state.get('show_success_banner', False):
+    st.markdown(
+        '<div style="position:fixed;bottom:30px;left:0;width:100%;z-index:9999;display:flex;justify-content:center;">'
+        '<div style="background-color:#d4edda;padding:20px 10px;border-radius:8px;text-align:center;font-size:1.3em;color:#155724;font-weight:bold;max-width:600px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">'
+        '✅ Report submitted!'
+        '</div></div>', unsafe_allow_html=True)
+
 # Initialize session state for reports
 def init_reports():
     if 'reports' not in st.session_state:
@@ -190,7 +198,7 @@ if page == "Report Crime":
                 "image_urgency": f"{image_urgency} {image_urgency_emoji}",
             }
             st.session_state['reports'].append(report)
-            st.success("Report submitted!")
+            st.session_state['show_success_banner'] = True
             # Do not display the report in JSON format here
         else:
             report = {
@@ -206,7 +214,7 @@ if page == "Report Crime":
                 "image_urgency": f"{image_urgency} {image_urgency_emoji}" if image else None
             }
             st.session_state['reports'].append(report)
-            st.success("Report submitted!")
+            st.session_state['show_success_banner'] = True
             # Remove detailed display from here
 
 elif page == "View Reports":
