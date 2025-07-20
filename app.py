@@ -17,7 +17,7 @@ import time
 
 st.set_page_config(page_title="Nairobi Crime Reporting AI App", layout="wide")
 
-st.title("Nairobi County Crime Reporting System (AI-Powered)")
+st.title("Nairobi County Crime Reporting System")
 
 # Initialize session state for reports
 def init_reports():
