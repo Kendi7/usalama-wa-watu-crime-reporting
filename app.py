@@ -323,15 +323,18 @@ elif page == "View Reports":
         # --- Expander Layout ---
         for idx, row in filtered_df.iterrows():
             with st.expander(f"{row['location']} | {row['sentiment']} | {row['urgency']} | {row['description'][:30]}..."):
+                st.markdown('''<div style="background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px 18px 18px 18px; margin-bottom: 8px;">''', unsafe_allow_html=True)
                 card_cols = st.columns([1, 2])
                 # Image section
                 with card_cols[0]:
+                    st.markdown('<h4 style="margin-bottom:8px;">Image</h4>', unsafe_allow_html=True)
                     if row['image'] and os.path.exists(row['image']):
                         st.image(row['image'], caption="Uploaded Image", use_container_width=True)
                     else:
                         st.write("No image uploaded.")
                 # Info section
                 with card_cols[1]:
+                    st.markdown('<h4 style="margin-bottom:8px;">Details</h4>', unsafe_allow_html=True)
                     st.markdown(f"**Location:** {row['location']}")
                     st.markdown(f"**Sentiment:** {row['sentiment']}")
                     # Visually outstanding urgency for different levels
@@ -349,6 +352,7 @@ elif page == "View Reports":
                     st.markdown(f"**Image Caption:** {row.get('image_caption', 'N/A')}")
                     st.markdown(f"**Detected Objects:** {row['objects']}")
                     st.markdown(f"**Contact:** {row['contact']}")
+                st.markdown('</div>', unsafe_allow_html=True)
             st.markdown("---")
         # --- Map Visualization (optional, keep at bottom) ---
         st.subheader("Map of Reports")
