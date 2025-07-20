@@ -334,7 +334,15 @@ elif page == "View Reports":
                 with card_cols[1]:
                     st.markdown(f"**Location:** {row['location']}")
                     st.markdown(f"**Sentiment:** {row['sentiment']}")
-                    st.markdown(f"**Urgency:** {row['urgency']}")
+                    # Visually outstanding urgency for different levels
+                    if 'High' in row['urgency']:
+                        st.markdown(f'''<div style="background-color:#ff4d4d; color:white; font-weight:bold; font-size:1.3em; padding:6px 12px; border-radius:6px; display:inline-block; margin-bottom:8px;">🚨 Urgency: {row['urgency']} 🚨</div>''', unsafe_allow_html=True)
+                    elif 'Medium/Low' in row['urgency']:
+                        st.markdown(f'''<div style="background-color:#ffa500; color:white; font-weight:bold; font-size:1.2em; padding:6px 12px; border-radius:6px; display:inline-block; margin-bottom:8px;">🟡 Urgency: {row['urgency']}</div>''', unsafe_allow_html=True)
+                    elif 'Unknown' in row['urgency']:
+                        st.markdown(f'''<div style="background-color:#888888; color:white; font-weight:bold; font-size:1.1em; padding:6px 12px; border-radius:6px; display:inline-block; margin-bottom:8px;">❓ Urgency: {row['urgency']}</div>''', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"**Urgency:** {row['urgency']}")
                     st.markdown(f"**Image Sentiment:** {row.get('image_sentiment', 'N/A')}")
                     st.markdown(f"**Image Urgency:** {row.get('image_urgency', 'N/A')}")
                     st.markdown(f"**Description:** {row['description']}")
