@@ -320,9 +320,9 @@ elif page == "View Reports":
             df['sentiment'].isin(selected_sentiments)
         ]
         st.markdown("---")
-        # --- Card Layout ---
+        # --- Expander Layout ---
         for idx, row in filtered_df.iterrows():
-            with st.container():
+            with st.expander(f"{row['location']} | {row['sentiment']} | {row['urgency']} | {row['description'][:30]}..."):
                 card_cols = st.columns([1, 2])
                 # Image section
                 with card_cols[0]:
@@ -341,7 +341,7 @@ elif page == "View Reports":
                     st.markdown(f"**Image Caption:** {row.get('image_caption', 'N/A')}")
                     st.markdown(f"**Detected Objects:** {row['objects']}")
                     st.markdown(f"**Contact:** {row['contact']}")
-                st.markdown("---")
+            st.markdown("---")
         # --- Map Visualization (optional, keep at bottom) ---
         st.subheader("Map of Reports")
         nairobi_center = [-1.286389, 36.817223]
