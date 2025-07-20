@@ -12,18 +12,12 @@ import requests
 from dotenv import load_dotenv
 load_dotenv()  # Load environment variables from .env file
 from transformers import VisionEncoderDecoderModel, ViTImageProcessor, AutoTokenizer
+import sqlite3
+import time
 
 st.set_page_config(page_title="Nairobi Crime Reporting AI App", layout="wide")
 
 st.title("Nairobi County Crime Reporting System (AI-Powered)")
-
-# Show a large, prominent success banner after report submission
-if st.session_state.get('show_success_banner', False):
-    st.markdown(
-        '<div style="position:fixed;bottom:30px;left:0;width:100%;z-index:9999;display:flex;justify-content:center;">'
-        '<div style="background-color:#d4edda;padding:20px 10px;border-radius:8px;text-align:center;font-size:1.3em;color:#155724;font-weight:bold;max-width:600px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">'
-        '✅ Report submitted!'
-        '</div></div>', unsafe_allow_html=True)
 
 # Initialize session state for reports
 def init_reports():
@@ -108,18 +102,92 @@ def combine_sentiment_and_urgency(text_sentiment, text_urgency, text_urgency_emo
         combined_sentiment = image_sentiment
     return combined_sentiment, combined_urgency, combined_urgency_emoji
 
+# --- Database Setup ---
+def init_db():
+    conn = sqlite3.connect('reports.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        description TEXT,
+        image TEXT,
+        location TEXT,
+        contact TEXT,
+        sentiment TEXT,
+        urgency TEXT,
+        objects TEXT,
+        image_sentiment TEXT,
+        image_caption TEXT,
+        image_urgency TEXT
+    )''')
+    conn.commit()
+    conn.close()
+init_db()
+
+def save_report_to_db(report):
+    conn = sqlite3.connect('reports.db')
+    c = conn.cursor()
+    c.execute('''INSERT INTO reports (description, image, location, contact, sentiment, urgency, objects, image_sentiment, image_caption, image_urgency)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+              (report['description'], report['image'], report['location'], report['contact'], report['sentiment'], report['urgency'], report['objects'], report.get('image_sentiment'), report.get('image_caption'), report.get('image_urgency')))
+    conn.commit()
+    conn.close()
+
+def load_reports_from_db():
+    conn = sqlite3.connect('reports.db')
+    c = conn.cursor()
+    c.execute('SELECT description, image, location, contact, sentiment, urgency, objects, image_sentiment, image_caption, image_urgency FROM reports')
+    rows = c.fetchall()
+    conn.close()
+    keys = ['description', 'image', 'location', 'contact', 'sentiment', 'urgency', 'objects', 'image_sentiment', 'image_caption', 'image_urgency']
+    return [dict(zip(keys, row)) for row in rows]
+
+# --- Auth ---
+def login():
+    if st.session_state.get('logged_in', False):
+        if st.button('Logout', key='logout_button'):
+            st.session_state['logged_in'] = False
+            st.rerun()
+        st.success('Login successful!')
+        return True
+    st.subheader('Login')
+    username = st.text_input('Username', key='login_username')
+    password = st.text_input('Password', type='password', key='login_password')
+    if st.button('Login', key='login_button'):
+        if username == 'admin' and password == 'admin123':
+            st.session_state['logged_in'] = True
+            st.success('Login successful!')
+            st.rerun()
+        else:
+            st.error('Invalid credentials')
+    return st.session_state.get('logged_in', False)
+
 # Sidebar navigation
 page = st.sidebar.radio("Go to", ["Report Crime", "View Reports"])
 
 if page == "Report Crime":
+    # Clear form fields if reset flag is set
+    if st.session_state.get('reset_crime_form', False):
+        st.session_state['crime_form_description'] = ''
+        st.session_state['crime_form_location'] = None
+        st.session_state['crime_form_contact'] = ''
+        st.session_state['reset_crime_form'] = False
+    # Handle notification auto-hide
+    if st.session_state.get('show_report_notification', False):
+        notif_time = st.session_state.get('report_notification_time', None)
+        if notif_time is None:
+            st.session_state['report_notification_time'] = time.time()
+        elif time.time() - notif_time > 2:
+            st.session_state['show_report_notification'] = False
+            st.session_state['report_notification_time'] = None
+            st.rerun()
     st.header("Report a Crime")
     with st.form("crime_form"):
-        description = st.text_area("Describe the incident", help="What happened? Where? When? Any details?")
-        image = st.file_uploader("Upload an image (optional)", type=["jpg", "jpeg", "png"])
+        description = st.text_area("Describe the incident", help="What happened? Where? When? Any details?", key="crime_form_description")
+        image = st.file_uploader("Upload an image (optional)", type=["jpg", "jpeg", "png"], key="crime_form_image")
         location = st.selectbox("Select location (sub-county)", [
             "Westlands", "Kasarani", "Lang'ata", "Embakasi", "Starehe", "Dagoretti", "Kamukunji", "Makadara", "Mathare", "Kibra", "Roysambu", "Ruaraka", "Other"
-        ])
-        contact = st.text_input("Contact info (optional)")
+        ], key="crime_form_location")
+        contact = st.text_input("Contact info (optional)", key="crime_form_contact")
         submitted = st.form_submit_button("Submit Report")
 
     if submitted:
@@ -198,8 +266,11 @@ if page == "Report Crime":
                 "image_urgency": f"{image_urgency} {image_urgency_emoji}",
             }
             st.session_state['reports'].append(report)
-            st.session_state['show_success_banner'] = True
-            # Do not display the report in JSON format here
+            save_report_to_db(report)
+            st.session_state['reset_crime_form'] = True
+            st.session_state['show_report_notification'] = True
+            st.session_state['report_notification_time'] = None
+            st.rerun()
         else:
             report = {
                 "description": description,
@@ -214,12 +285,18 @@ if page == "Report Crime":
                 "image_urgency": f"{image_urgency} {image_urgency_emoji}" if image else None
             }
             st.session_state['reports'].append(report)
-            st.session_state['show_success_banner'] = True
-            # Remove detailed display from here
+            save_report_to_db(report)
+            st.session_state['reset_crime_form'] = True
+            st.session_state['show_report_notification'] = True
+            st.session_state['report_notification_time'] = None
+            st.rerun()
 
 elif page == "View Reports":
+    if not st.session_state.get('logged_in', False):
+        if not login():
+            st.stop()
     st.header("Crime Reports")
-    reports = st.session_state.get('reports', [])
+    reports = load_reports_from_db()
     if not reports:
         st.info("No reports yet.")
     else:
@@ -313,3 +390,15 @@ elif page == "View Reports":
                 icon=folium.Icon(color=color)
             ).add_to(m)
         st_folium(m, width=700, height=500) 
+
+# At the end of the script, show the custom notification at the bottom if needed
+if st.session_state.get('show_report_notification', False):
+    st.markdown(
+        '''
+        <div style="position:fixed;bottom:40px;left:0;width:100%;z-index:9999;display:flex;justify-content:center;">
+            <div style="background-color:#d4edda;padding:20px 30px 20px 30px;border-radius:8px;text-align:center;font-size:1.3em;color:#155724;font-weight:bold;max-width:600px;box-shadow:0 2px 8px rgba(0,0,0,0.1);display:flex;align-items:center;gap:20px;">
+                <span>✅ Report submitted!</span>
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+    st.session_state['show_report_notification'] = False 
