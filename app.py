@@ -191,12 +191,7 @@ if page == "Report Crime":
             }
             st.session_state['reports'].append(report)
             st.success("Report submitted!")
-            st.markdown(f"**Combined Sentiment:** {combined_sentiment}")
-            st.markdown(f"**Combined Urgency Level:** {combined_urgency} {combined_urgency_emoji}")
-            st.markdown(f"**Image Sentiment:** {image_sentiment}")
-            st.markdown(f"**Image Caption:** {caption}")
-            st.markdown(f"**Image Urgency Level:** {image_urgency} {image_urgency_emoji}")
-            st.markdown(f"**Detected Objects:** {detected_objects}")
+            # Do not display the report in JSON format here
         else:
             report = {
                 "description": description,
@@ -212,70 +207,67 @@ if page == "Report Crime":
             }
             st.session_state['reports'].append(report)
             st.success("Report submitted!")
-            st.markdown(f"**Sentiment Analysis:** {sentiment}")
-            st.markdown(f"**Urgency Level:** {urgency} {urgency_emoji}")
-            if image:
-                st.markdown(f"**Image Sentiment:** {image_sentiment}")
-                st.markdown(f"**Image Caption:** {caption}")
-                st.markdown(f"**Image Urgency Level:** {image_urgency} {image_urgency_emoji}")
-            st.markdown(f"**Detected Objects:** {detected_objects}")
-        st.write(report)
+            # Remove detailed display from here
 
 elif page == "View Reports":
-    st.header("Crime Reports Map & Table")
+    st.header("Crime Reports")
     reports = st.session_state.get('reports', [])
     if not reports:
         st.info("No reports yet.")
     else:
         df = pd.DataFrame(reports)
-        st.dataframe(df)
-        # Filtering and search widgets
-        st.subheader("Filter & Search Reports")
-        search_text = st.text_input("Search (description, contact, location, objects)")
-        location_options = df['location'].unique().tolist()
-        urgency_options = df['urgency'].unique().tolist()
-        # No default selection
-        selected_locations = st.multiselect("Filter by Location", location_options)
-        selected_urgencies = st.multiselect("Filter by Urgency", urgency_options)
-        # If nothing is selected, show all
+        # --- Filter Controls ---
+        st.subheader("Filter Reports")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            location_options = df['location'].unique().tolist()
+            selected_locations = st.multiselect("Location", location_options)
+        with col2:
+            urgency_options = df['urgency'].unique().tolist()
+            selected_urgencies = st.multiselect("Urgency", urgency_options)
+        with col3:
+            sentiment_options = df['sentiment'].unique().tolist()
+            selected_sentiments = st.multiselect("Sentiment", sentiment_options)
+        # If nothing is selected in any filter, show all
         if not selected_locations:
             selected_locations = location_options
         if not selected_urgencies:
             selected_urgencies = urgency_options
-
+        if not selected_sentiments:
+            selected_sentiments = sentiment_options
         # Apply filters
         filtered_df = df[
             df['location'].isin(selected_locations) &
-            df['urgency'].isin(selected_urgencies)
+            df['urgency'].isin(selected_urgencies) &
+            df['sentiment'].isin(selected_sentiments)
         ]
-        if search_text:
-            mask = (
-                filtered_df['description'].str.contains(search_text, case=False, na=False) |
-                filtered_df['contact'].str.contains(search_text, case=False, na=False) |
-                filtered_df['location'].str.contains(search_text, case=False, na=False) |
-                filtered_df['objects'].str.contains(search_text, case=False, na=False)
-            )
-            filtered_df = filtered_df[mask]
-
-        st.dataframe(filtered_df)
-        # Show images as thumbnails in a custom table
-        st.subheader("Reports with Images")
+        st.markdown("---")
+        # --- Card Layout ---
         for idx, row in filtered_df.iterrows():
-            with st.expander(f"Report {idx+1} - {row['location']}"):
-                # Show image if available
-                if row['image'] and os.path.exists(row['image']):
-                    st.image(row['image'], caption="Uploaded Image", width=400)
-                else:
-                    st.write("No image uploaded.")
-                # Show other details below the image
-                details = f"""
-                **Description:** {row['description']}  \n                **Location:** {row['location']}  \n                **Contact:** {row['contact']}  \n                **Sentiment:** {row['sentiment']}  \n                **Image Sentiment:** {row.get('image_sentiment', 'N/A')}  \n                **Urgency:** {row.get('urgency', '')}  \n                **Objects:** {row['objects']}  \n                """
-                st.markdown(details)
-        # Map visualization
-        # Nairobi center coordinates
+            with st.container():
+                card_cols = st.columns([1, 2])
+                # Image section
+                with card_cols[0]:
+                    if row['image'] and os.path.exists(row['image']):
+                        st.image(row['image'], caption="Uploaded Image", use_container_width=True)
+                    else:
+                        st.write("No image uploaded.")
+                # Info section
+                with card_cols[1]:
+                    st.markdown(f"**Location:** {row['location']}")
+                    st.markdown(f"**Sentiment:** {row['sentiment']}")
+                    st.markdown(f"**Urgency:** {row['urgency']}")
+                    st.markdown(f"**Image Sentiment:** {row.get('image_sentiment', 'N/A')}")
+                    st.markdown(f"**Image Urgency:** {row.get('image_urgency', 'N/A')}")
+                    st.markdown(f"**Description:** {row['description']}")
+                    st.markdown(f"**Image Caption:** {row.get('image_caption', 'N/A')}")
+                    st.markdown(f"**Detected Objects:** {row['objects']}")
+                    st.markdown(f"**Contact:** {row['contact']}")
+                st.markdown("---")
+        # --- Map Visualization (optional, keep at bottom) ---
+        st.subheader("Map of Reports")
         nairobi_center = [-1.286389, 36.817223]
         m = folium.Map(location=nairobi_center, zoom_start=11)
-        # Sub-county coordinates (approximate)
         sub_county_coords = {
             "Westlands": [-1.2647, 36.8121],
             "Kasarani": [-1.2195, 36.8961],
@@ -291,9 +283,8 @@ elif page == "View Reports":
             "Ruaraka": [-1.2500, 36.8833],
             "Other": nairobi_center
         }
-        for idx, row in df.iterrows():
+        for idx, row in filtered_df.iterrows():
             coords = sub_county_coords.get(row['location'], nairobi_center)
-            # Color by sentiment
             sentiment = row.get('sentiment', '').lower()
             if 'negative' in sentiment or 'urgent' in sentiment:
                 color = 'red'
