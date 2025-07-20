@@ -56,6 +56,21 @@ def get_local_image_caption(image_path):
     caption = tokenizer.decode(output_ids[0], skip_special_tokens=True)
     return caption
 
+def map_caption_to_sentiment(caption):
+    negative_keywords = [
+        'violence', 'injury', 'attack', 'gun', 'knife', 'blood', 'fire', 'explosion', 'fight', 'crying', 'sad', 'danger', 'accident', 'protest', 'riot', 'dead', 'death', 'hurt', 'wound'
+    ]
+    positive_keywords = [
+        'smile', 'happy', 'safe', 'peace', 'joy', 'celebration', 'calm', 'help', 'rescue', 'hug', 'love'
+    ]
+    caption_lower = caption.lower()
+    if any(word in caption_lower for word in negative_keywords):
+        return "Very Negative"
+    elif any(word in caption_lower for word in positive_keywords):
+        return "Very Positive"
+    else:
+        return "Neutral"
+
 # Sidebar navigation
 page = st.sidebar.radio("Go to", ["Report Crime", "View Reports"])
 
@@ -124,7 +139,8 @@ if page == "Report Crime":
                         labels.add(r.names[int(c)])
             detected_objects = ', '.join(labels) if labels else 'No objects detected'
             # Local image captioning (as sentiment proxy)
-            image_sentiment = get_local_image_caption(img_path)
+            caption = get_local_image_caption(img_path)
+            image_sentiment = map_caption_to_sentiment(caption)
         report = {
             "description": description,
             "image": img_path,
@@ -133,12 +149,15 @@ if page == "Report Crime":
             "sentiment": sentiment,
             "urgency": f"{urgency} {urgency_emoji}",
             "objects": detected_objects,
-            "image_sentiment": image_sentiment
+            "image_sentiment": image_sentiment,
+            "image_caption": caption if image else None
         }
         st.session_state['reports'].append(report)
         st.success("Report submitted!")
         st.markdown(f"**Sentiment Analysis:** {sentiment}")
         st.markdown(f"**Image Sentiment:** {image_sentiment}")
+        if image:
+            st.markdown(f"**Image Caption:** {caption}")
         st.markdown(f"**Urgency Level:** {urgency} {urgency_emoji}")
         st.markdown(f"**Detected Objects:** {detected_objects}")
         st.write(report)
