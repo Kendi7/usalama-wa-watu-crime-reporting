@@ -71,6 +71,35 @@ def map_caption_to_sentiment(caption):
     else:
         return "Neutral"
 
+def map_image_urgency(image_sentiment):
+    sentiment_to_urgency = {
+        'Very Negative': ('High', '🚨'),
+        'Very Positive': ('Very Low', '🎉'),
+        'Neutral': ('Medium/Low', '🟡'),
+    }
+    return sentiment_to_urgency.get(image_sentiment, ('Medium/Low', '🟡'))
+
+def combine_sentiment_and_urgency(text_sentiment, text_urgency, text_urgency_emoji, image_sentiment, image_urgency, image_urgency_emoji):
+    # Priority: High > Medium/Low > Very Low
+    urgency_order = {'High': 3, 'Medium/Low': 2, 'Very Low': 1}
+    # Pick the higher urgency
+    if urgency_order.get(text_urgency, 2) >= urgency_order.get(image_urgency, 2):
+        combined_urgency = text_urgency
+        combined_urgency_emoji = text_urgency_emoji
+    else:
+        combined_urgency = image_urgency
+        combined_urgency_emoji = image_urgency_emoji
+    # Sentiment: Very Negative > Negative > Neutral > Positive > Very Positive
+    sentiment_order = {
+        'Very Negative': 1, 'Negative': 2, 'Neutral': 3, 'Positive': 4, 'Very Positive': 5
+    }
+    # Use the more negative sentiment
+    if sentiment_order.get(text_sentiment.split()[0], 3) <= sentiment_order.get(image_sentiment.split()[0], 3):
+        combined_sentiment = text_sentiment
+    else:
+        combined_sentiment = image_sentiment
+    return combined_sentiment, combined_urgency, combined_urgency_emoji
+
 # Sidebar navigation
 page = st.sidebar.radio("Go to", ["Report Crime", "View Reports"])
 
@@ -141,25 +170,55 @@ if page == "Report Crime":
             # Local image captioning (as sentiment proxy)
             caption = get_local_image_caption(img_path)
             image_sentiment = map_caption_to_sentiment(caption)
-        report = {
-            "description": description,
-            "image": img_path,
-            "location": location,
-            "contact": contact,
-            "sentiment": sentiment,
-            "urgency": f"{urgency} {urgency_emoji}",
-            "objects": detected_objects,
-            "image_sentiment": image_sentiment,
-            "image_caption": caption if image else None
-        }
-        st.session_state['reports'].append(report)
-        st.success("Report submitted!")
-        st.markdown(f"**Sentiment Analysis:** {sentiment}")
-        st.markdown(f"**Image Sentiment:** {image_sentiment}")
-        if image:
+            image_urgency, image_urgency_emoji = map_image_urgency(image_sentiment)
+
+        if image and description.strip():
+            # Combine sentiment and urgency
+            combined_sentiment, combined_urgency, combined_urgency_emoji = combine_sentiment_and_urgency(
+                sentiment_label, urgency, urgency_emoji, image_sentiment, image_urgency, image_urgency_emoji
+            )
+            report = {
+                "description": description,
+                "image": img_path,
+                "location": location,
+                "contact": contact,
+                "sentiment": combined_sentiment,
+                "urgency": f"{combined_urgency} {combined_urgency_emoji}",
+                "objects": detected_objects,
+                "image_sentiment": image_sentiment,
+                "image_caption": caption,
+                "image_urgency": f"{image_urgency} {image_urgency_emoji}",
+            }
+            st.session_state['reports'].append(report)
+            st.success("Report submitted!")
+            st.markdown(f"**Combined Sentiment:** {combined_sentiment}")
+            st.markdown(f"**Combined Urgency Level:** {combined_urgency} {combined_urgency_emoji}")
+            st.markdown(f"**Image Sentiment:** {image_sentiment}")
             st.markdown(f"**Image Caption:** {caption}")
-        st.markdown(f"**Urgency Level:** {urgency} {urgency_emoji}")
-        st.markdown(f"**Detected Objects:** {detected_objects}")
+            st.markdown(f"**Image Urgency Level:** {image_urgency} {image_urgency_emoji}")
+            st.markdown(f"**Detected Objects:** {detected_objects}")
+        else:
+            report = {
+                "description": description,
+                "image": img_path,
+                "location": location,
+                "contact": contact,
+                "sentiment": sentiment,
+                "urgency": f"{urgency} {urgency_emoji}",
+                "objects": detected_objects,
+                "image_sentiment": image_sentiment,
+                "image_caption": caption if image else None,
+                "image_urgency": f"{image_urgency} {image_urgency_emoji}" if image else None
+            }
+            st.session_state['reports'].append(report)
+            st.success("Report submitted!")
+            st.markdown(f"**Sentiment Analysis:** {sentiment}")
+            st.markdown(f"**Urgency Level:** {urgency} {urgency_emoji}")
+            if image:
+                st.markdown(f"**Image Sentiment:** {image_sentiment}")
+                st.markdown(f"**Image Caption:** {caption}")
+                st.markdown(f"**Image Urgency Level:** {image_urgency} {image_urgency_emoji}")
+            st.markdown(f"**Detected Objects:** {detected_objects}")
         st.write(report)
 
 elif page == "View Reports":
