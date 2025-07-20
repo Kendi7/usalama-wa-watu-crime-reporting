@@ -165,21 +165,16 @@ def login():
 page = st.sidebar.radio("Go to", ["Report Crime", "View Reports"])
 
 if page == "Report Crime":
+    # Show toast if flag is set
+    if st.session_state.get('show_report_toast', False):
+        st.toast("Report submitted!", icon="✅")
+        st.session_state['show_report_toast'] = False
     # Clear form fields if reset flag is set
     if st.session_state.get('reset_crime_form', False):
         st.session_state['crime_form_description'] = ''
         st.session_state['crime_form_location'] = None
         st.session_state['crime_form_contact'] = ''
         st.session_state['reset_crime_form'] = False
-    # Handle notification auto-hide
-    if st.session_state.get('show_report_notification', False):
-        notif_time = st.session_state.get('report_notification_time', None)
-        if notif_time is None:
-            st.session_state['report_notification_time'] = time.time()
-        elif time.time() - notif_time > 2:
-            st.session_state['show_report_notification'] = False
-            st.session_state['report_notification_time'] = None
-            st.rerun()
     st.header("Report a Crime")
     with st.form("crime_form"):
         description = st.text_area("Describe the incident", help="What happened? Where? When? Any details?", key="crime_form_description")
@@ -268,8 +263,7 @@ if page == "Report Crime":
             st.session_state['reports'].append(report)
             save_report_to_db(report)
             st.session_state['reset_crime_form'] = True
-            st.session_state['show_report_notification'] = True
-            st.session_state['report_notification_time'] = None
+            st.session_state['show_report_toast'] = True
             st.rerun()
         else:
             report = {
@@ -287,8 +281,7 @@ if page == "Report Crime":
             st.session_state['reports'].append(report)
             save_report_to_db(report)
             st.session_state['reset_crime_form'] = True
-            st.session_state['show_report_notification'] = True
-            st.session_state['report_notification_time'] = None
+            st.session_state['show_report_toast'] = True
             st.rerun()
 
 elif page == "View Reports":
@@ -390,15 +383,3 @@ elif page == "View Reports":
                 icon=folium.Icon(color=color)
             ).add_to(m)
         st_folium(m, width=700, height=500) 
-
-# At the end of the script, show the custom notification at the bottom if needed
-if st.session_state.get('show_report_notification', False):
-    st.markdown(
-        '''
-        <div style="position:fixed;bottom:40px;left:0;width:100%;z-index:9999;display:flex;justify-content:center;">
-            <div style="background-color:#d4edda;padding:20px 30px 20px 30px;border-radius:8px;text-align:center;font-size:1.3em;color:#155724;font-weight:bold;max-width:600px;box-shadow:0 2px 8px rgba(0,0,0,0.1);display:flex;align-items:center;gap:20px;">
-                <span>✅ Report submitted!</span>
-            </div>
-        </div>
-        ''', unsafe_allow_html=True)
-    st.session_state['show_report_notification'] = False 
