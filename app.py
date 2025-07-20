@@ -115,6 +115,54 @@ elif page == "View Reports":
     else:
         df = pd.DataFrame(reports)
         st.dataframe(df)
+        # Filtering and search widgets
+        st.subheader("Filter & Search Reports")
+        search_text = st.text_input("Search (description, contact, location, objects)")
+        location_options = df['location'].unique().tolist()
+        urgency_options = df['urgency'].unique().tolist()
+        # No default selection
+        selected_locations = st.multiselect("Filter by Location", location_options)
+        selected_urgencies = st.multiselect("Filter by Urgency", urgency_options)
+        # If nothing is selected, show all
+        if not selected_locations:
+            selected_locations = location_options
+        if not selected_urgencies:
+            selected_urgencies = urgency_options
+
+        # Apply filters
+        filtered_df = df[
+            df['location'].isin(selected_locations) &
+            df['urgency'].isin(selected_urgencies)
+        ]
+        if search_text:
+            mask = (
+                filtered_df['description'].str.contains(search_text, case=False, na=False) |
+                filtered_df['contact'].str.contains(search_text, case=False, na=False) |
+                filtered_df['location'].str.contains(search_text, case=False, na=False) |
+                filtered_df['objects'].str.contains(search_text, case=False, na=False)
+            )
+            filtered_df = filtered_df[mask]
+
+        st.dataframe(filtered_df)
+        # Show images as thumbnails in a custom table
+        st.subheader("Reports with Images")
+        for idx, row in filtered_df.iterrows():
+            with st.expander(f"Report {idx+1} - {row['location']}"):
+                # Show image if available
+                if row['image'] and os.path.exists(row['image']):
+                    st.image(row['image'], caption="Uploaded Image", width=400)
+                else:
+                    st.write("No image uploaded.")
+                # Show other details below the image
+                details = f"""
+                **Description:** {row['description']}  
+                **Location:** {row['location']}  
+                **Contact:** {row['contact']}  
+                **Sentiment:** {row['sentiment']}  
+                **Urgency:** {row.get('urgency', '')}  
+                **Objects:** {row['objects']}  
+                """
+                st.markdown(details)
         # Map visualization
         # Nairobi center coordinates
         nairobi_center = [-1.286389, 36.817223]
