@@ -172,129 +172,140 @@ page = st.sidebar.radio("Go to", ["Report Crime", "View Reports"])
 # Sidebar now only contains the navigation radio button
 
 if page == "Report Crime":
-    # Show toast if flag is set
-    if st.session_state.get('show_report_toast', False):
-        st.toast("Report submitted!", icon="✅")
-        st.session_state['show_report_toast'] = False
-    # Clear form fields if reset flag is set
-    if st.session_state.get('reset_crime_form', False):
-        st.session_state['crime_form_description'] = ''
-        st.session_state['crime_form_location'] = None
-        st.session_state['crime_form_contact'] = ''
-        st.session_state['reset_crime_form'] = False
-    st.header("Report a Crime")
-    with st.form("crime_form"):
-        description = st.text_area("Describe the incident", help="What happened? Where? When? Any details?", key="crime_form_description")
-        image = st.file_uploader("Upload an image (optional)", type=["jpg", "jpeg", "png"], key="crime_form_image")
-        location = st.selectbox("Select location (sub-county)", [
-            "Westlands", "Kasarani", "Lang'ata", "Embakasi", "Starehe", "Dagoretti", "Kamukunji", "Makadara", "Mathare", "Kibra", "Roysambu", "Ruaraka", "Other"
-        ], key="crime_form_location")
-        contact = st.text_input("Contact info (optional)", key="crime_form_contact")
-        submitted = st.form_submit_button("Submit Report")
-
-    if submitted:
-        # Run sentiment analysis
-        if description.strip():
-            sentiment_result = sentiment_pipeline(description)[0]
-            label = sentiment_result['label']
-            # Map star rating to sentiment
-            star_to_sentiment = {
-                '1 star': 'Very Negative',
-                '2 stars': 'Negative',
-                '3 stars': 'Neutral',
-                '4 stars': 'Positive',
-                '5 stars': 'Very Positive',
-            }
-            sentiment_label = star_to_sentiment.get(label, label)
-            # --- Custom logic for negative keywords ---
-            negative_keywords = [
-                'attack', 'kill', 'robbery', 'assault', 'theft', 'violence', 'murder', 'rape', 'shooting', 'stab',
-                'injury', 'danger', 'threat', 'gun', 'knife', 'explosion', 'bomb', 'terror', 'crime', 'goon', 'gang',
-                'thief', 'hijack', 'kidnap', 'abduct', 'arson', 'riot', 'fight', 'abuse', 'molest', 'harass', 'rape'
-            ]
-            if (sentiment_label in ['Positive', 'Very Positive'] and any(word in description.lower() for word in negative_keywords)):
-                sentiment_label = 'Very Negative'
-            sentiment = f"{sentiment_label} (score: {sentiment_result['score']:.2f})"
-            # Map sentiment to urgency and emoji
-            sentiment_to_urgency = {
-                'Very Negative': ('High', '🚨'),
-                'Negative': ('Medium-High', '⚠️'),
-                'Neutral': ('Medium/Low', '🟡'),
-                'Positive': ('Low', '✅'),
-                'Very Positive': ('Very Low', '🎉'),
-            }
-            urgency, urgency_emoji = sentiment_to_urgency.get(sentiment_label, ('Medium/Low', '🟡'))
-        else:
-            sentiment = "No description provided"
-            urgency = "Unknown"
-            urgency_emoji = "❓"
-        # Run object detection if image is uploaded
-        detected_objects = "No image uploaded"
-        img_path = None
-        image_sentiment = "No image uploaded"
-        if image:
-            img_path = os.path.join("uploads", image.name)
-            os.makedirs("uploads", exist_ok=True)
-            with open(img_path, "wb") as f:
-                f.write(image.read())
-            # Object detection using ultralytics YOLO
-            results = yolo_model(img_path)
-            labels = set()
-            for r in results:
-                if hasattr(r, 'names') and hasattr(r, 'boxes'):
-                    for c in r.boxes.cls:
-                        labels.add(r.names[int(c)])
-            detected_objects = ', '.join(labels) if labels else 'No objects detected'
-            # Local image captioning (as sentiment proxy)
-            caption = get_local_image_caption(img_path)
-            image_sentiment = map_caption_to_sentiment(caption)
-            image_urgency, image_urgency_emoji = map_image_urgency(image_sentiment)
-
-        if image and description.strip():
-            # Combine sentiment and urgency
-            combined_sentiment, combined_urgency, combined_urgency_emoji = combine_sentiment_and_urgency(
-                sentiment_label, urgency, urgency_emoji, image_sentiment, image_urgency, image_urgency_emoji
-            )
-            report = {
-                "description": description,
-                "image": img_path,
-                "location": location,
-                "contact": contact,
-                "sentiment": combined_sentiment,
-                "urgency": f"{combined_urgency} {combined_urgency_emoji}",
-                "objects": detected_objects,
-                "image_sentiment": image_sentiment,
-                "image_caption": caption,
-                "image_urgency": f"{image_urgency} {image_urgency_emoji}",
-            }
-            st.session_state['reports'].append(report)
-            save_report_to_db(report)
-            st.session_state['reset_crime_form'] = True
-            st.session_state['show_report_toast'] = True
+    # Prevent admin from submitting a report unless logged out
+    if st.session_state.get('logged_in', False):
+        st.warning("Admin cannot submit a report while logged in. Please log out to access the report form.")
+        if st.button('Logout', key='admin_logout_button_report'):
+            st.session_state['logged_in'] = False
             st.rerun()
-        else:
-            report = {
-                "description": description,
-                "image": img_path,
-                "location": location,
-                "contact": contact,
-                "sentiment": sentiment,
-                "urgency": f"{urgency} {urgency_emoji}",
-                "objects": detected_objects,
-                "image_sentiment": image_sentiment,
-                "image_caption": caption if image else None,
-                "image_urgency": f"{image_urgency} {image_urgency_emoji}" if image else None
-            }
-            st.session_state['reports'].append(report)
-            save_report_to_db(report)
-            st.session_state['reset_crime_form'] = True
-            st.session_state['show_report_toast'] = True
-            st.rerun()
+    else:
+        # Show toast if flag is set
+        if st.session_state.get('show_report_toast', False):
+            st.toast("Report submitted!", icon="✅")
+            st.session_state['show_report_toast'] = False
+        # Clear form fields if reset flag is set
+        if st.session_state.get('reset_crime_form', False):
+            st.session_state['crime_form_description'] = ''
+            st.session_state['crime_form_location'] = None
+            st.session_state['crime_form_contact'] = ''
+            st.session_state['reset_crime_form'] = False
+        st.header("Report a Crime")
+        with st.form("crime_form"):
+            description = st.text_area("Describe the incident", help="What happened? Where? When? Any details?", key="crime_form_description")
+            image = st.file_uploader("Upload an image (optional)", type=["jpg", "jpeg", "png"], key="crime_form_image")
+            location = st.selectbox("Select location (sub-county)", [
+                "Westlands", "Kasarani", "Lang'ata", "Embakasi", "Starehe", "Dagoretti", "Kamukunji", "Makadara", "Mathare", "Kibra", "Roysambu", "Ruaraka", "Other"
+            ], key="crime_form_location")
+            contact = st.text_input("Contact info (optional)", key="crime_form_contact")
+            submitted = st.form_submit_button("Submit Report")
+
+            if submitted:
+                # Run sentiment analysis
+                if description.strip():
+                    sentiment_result = sentiment_pipeline(description)[0]
+                    label = sentiment_result['label']
+                    # Map star rating to sentiment
+                    star_to_sentiment = {
+                        '1 star': 'Very Negative',
+                        '2 stars': 'Negative',
+                        '3 stars': 'Neutral',
+                        '4 stars': 'Positive',
+                        '5 stars': 'Very Positive',
+                    }
+                    sentiment_label = star_to_sentiment.get(label, label)
+                    # --- Custom logic for negative keywords ---
+                    negative_keywords = [
+                        'attack', 'kill', 'robbery', 'assault', 'theft', 'violence', 'murder', 'rape', 'shooting', 'stab',
+                        'injury', 'danger', 'threat', 'gun', 'knife', 'explosion', 'bomb', 'terror', 'crime', 'goon', 'gang',
+                        'thief', 'hijack', 'kidnap', 'abduct', 'arson', 'riot', 'fight', 'abuse', 'molest', 'harass', 'rape'
+                    ]
+                    if (sentiment_label in ['Positive', 'Very Positive'] and any(word in description.lower() for word in negative_keywords)):
+                        sentiment_label = 'Very Negative'
+                    sentiment = f"{sentiment_label} (score: {sentiment_result['score']:.2f})"
+                    # Map sentiment to urgency and emoji
+                    sentiment_to_urgency = {
+                        'Very Negative': ('High', '🚨'),
+                        'Negative': ('Medium-High', '⚠️'),
+                        'Neutral': ('Medium/Low', '🟡'),
+                        'Positive': ('Low', '✅'),
+                        'Very Positive': ('Very Low', '🎉'),
+                    }
+                    urgency, urgency_emoji = sentiment_to_urgency.get(sentiment_label, ('Medium/Low', '🟡'))
+                else:
+                    sentiment = "No description provided"
+                    urgency = "Unknown"
+                    urgency_emoji = "❓"
+                # Run object detection if image is uploaded
+                detected_objects = "No image uploaded"
+                img_path = None
+                image_sentiment = "No image uploaded"
+                if image:
+                    img_path = os.path.join("uploads", image.name)
+                    os.makedirs("uploads", exist_ok=True)
+                    with open(img_path, "wb") as f:
+                        f.write(image.read())
+                    # Object detection using ultralytics YOLO
+                    results = yolo_model(img_path)
+                    labels = set()
+                    for r in results:
+                        if hasattr(r, 'names') and hasattr(r, 'boxes'):
+                            for c in r.boxes.cls:
+                                labels.add(r.names[int(c)])
+                    detected_objects = ', '.join(labels) if labels else 'No objects detected'
+                    # Local image captioning (as sentiment proxy)
+                    caption = get_local_image_caption(img_path)
+                    image_sentiment = map_caption_to_sentiment(caption)
+                    image_urgency, image_urgency_emoji = map_image_urgency(image_sentiment)
+
+                if image and description.strip():
+                    # Combine sentiment and urgency
+                    combined_sentiment, combined_urgency, combined_urgency_emoji = combine_sentiment_and_urgency(
+                        sentiment_label, urgency, urgency_emoji, image_sentiment, image_urgency, image_urgency_emoji
+                    )
+                    report = {
+                        "description": description,
+                        "image": img_path,
+                        "location": location,
+                        "contact": contact,
+                        "sentiment": combined_sentiment,
+                        "urgency": f"{combined_urgency} {combined_urgency_emoji}",
+                        "objects": detected_objects,
+                        "image_sentiment": image_sentiment,
+                        "image_caption": caption,
+                        "image_urgency": f"{image_urgency} {image_urgency_emoji}",
+                    }
+                    st.session_state['reports'].append(report)
+                    save_report_to_db(report)
+                    st.session_state['reset_crime_form'] = True
+                    st.session_state['show_report_toast'] = True
+                    st.rerun()
+                else:
+                    report = {
+                        "description": description,
+                        "image": img_path,
+                        "location": location,
+                        "contact": contact,
+                        "sentiment": sentiment,
+                        "urgency": f"{urgency} {urgency_emoji}",
+                        "objects": detected_objects,
+                        "image_sentiment": image_sentiment,
+                        "image_caption": caption if image else None,
+                        "image_urgency": f"{image_urgency} {image_urgency_emoji}" if image else None
+                    }
+                    st.session_state['reports'].append(report)
+                    save_report_to_db(report)
+                    st.session_state['reset_crime_form'] = True
+                    st.session_state['show_report_toast'] = True
+                    st.rerun()
 
 elif page == "View Reports":
     if not st.session_state.get('logged_in', False):
         if not login():
             st.stop()
+    # Add logout button to admin page
+    if st.button('Logout', key='admin_logout_button_view_reports'):
+        st.session_state['logged_in'] = False
+        st.rerun()
     st.header("Crime Reports")
     reports = load_reports_from_db()
     if not reports:
