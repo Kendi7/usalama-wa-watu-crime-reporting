@@ -18,7 +18,14 @@ import time
 st.set_page_config(page_title="Nairobi Crime Reporting AI App", layout="wide")
 
 # --- Sidebar navigation with Home (Landing Page) ---
-page = st.sidebar.radio("Go to", ["Home", "Report Crime", "View Reports"])
+if 'page' not in st.session_state:
+    st.session_state['page'] = 'Home'
+
+# Only use sidebar radio if not redirected by button
+if st.session_state['page'] == 'Home':
+    page = st.sidebar.radio("Go to", ["Home", "Report Crime", "View Reports"])
+else:
+    page = st.session_state['page']
 
 if page == "Home":
     # --- Custom CSS for styling and animations (from landingpage.py) ---
@@ -108,34 +115,33 @@ if page == "Home":
         }
         </style>
         <div class="button-row">
-            <form action="#" method="post" style="display:inline;">
-                <button class="btn-main" type="submit" name="report_crime">🚨 Report Crime</button>
-            </form>
-            <form action="#" method="post" style="display:inline;">
-                <button class="btn-secondary" type="submit" name="view_reports">📊 View Reports</button>
-            </form>
-            <form action="#" method="post" style="display:inline;">
-                <button class="btn-secondary" type="submit" name="about">ℹ️ About</button>
-            </form>
+            <button class="btn-main" id="report_crime_btn">🚨 Report Crime</button>
+            <button class="btn-secondary" id="view_reports_btn">📊 View Reports</button>
+            <button class="btn-secondary" id="about_btn">ℹ️ About</button>
         </div>
+        <script>
+        const reportBtn = window.parent.document.getElementById('report_crime_btn');
+        const viewBtn = window.parent.document.getElementById('view_reports_btn');
+        const aboutBtn = window.parent.document.getElementById('about_btn');
+        if (reportBtn) reportBtn.onclick = () => window.parent.postMessage({type: 'streamlit:setComponentValue', key: 'page', value: 'Report Crime'}, '*');
+        if (viewBtn) viewBtn.onclick = () => window.parent.postMessage({type: 'streamlit:setComponentValue', key: 'page', value: 'View Reports'}, '*');
+        if (aboutBtn) aboutBtn.onclick = () => window.parent.postMessage({type: 'streamlit:setComponentValue', key: 'page', value: 'Home'}, '*');
+        </script>
         """, unsafe_allow_html=True)
-        # Button logic (simulate navigation)
-        report_clicked = st.session_state.get('report_crime_btn', False)
-        view_clicked = st.session_state.get('view_reports_btn', False)
-        about_clicked = st.session_state.get('about_btn', False)
-        # Use hidden Streamlit buttons for navigation
+        # Fallback for Streamlit: use st.button for navigation
         col_btns = st.columns([1,1,1])
         with col_btns[0]:
-            if st.button(" ", key="report_crime_btn", help="Go to the crime reporting form", args=()):
-                st.session_state["_sidebar_radio"] = 1
-                st.experimental_rerun()
+            if st.button("🚨 Report Crime", key="report_crime_btn_fallback", help="Go to the crime reporting form"):
+                st.session_state['page'] = 'Report Crime'
+                st.rerun()
         with col_btns[1]:
-            if st.button(" ", key="view_reports_btn", help="Go to the reports page", args=()):
-                st.session_state["_sidebar_radio"] = 2
-                st.experimental_rerun()
+            if st.button("📊 View Reports", key="view_reports_btn_fallback", help="Go to the reports page"):
+                st.session_state['page'] = 'View Reports'
+                st.rerun()
         with col_btns[2]:
-            if st.button(" ", key="about_btn", help="About this app", args=()):
-                st.info("Usalama Jijini is a community-driven crime reporting and safety system for Nairobi.")
+            if st.button("ℹ️ About", key="about_btn_fallback", help="About this app"):
+                st.session_state['page'] = 'Home'
+                st.rerun()
     with col2:
         st.markdown("""
 **👋 Welcome to Usalama Jijini!**
@@ -319,6 +325,10 @@ def login():
 # Sidebar now only contains the navigation radio button
 
 if page == "Report Crime":
+    # Add Back to Home button
+    if st.button("🏠 Back to Home", key="back_to_home_from_report"):
+        st.session_state['page'] = 'Home'
+        st.rerun()
     # Prevent admin from submitting a report unless logged out
     if st.session_state.get('logged_in', False):
         st.warning("Admin cannot submit a report while logged in. Please log out to access the report form.")
@@ -446,6 +456,10 @@ if page == "Report Crime":
                     st.rerun()
 
 elif page == "View Reports":
+    # Add Back to Home button
+    if st.button("🏠 Back to Home", key="back_to_home_from_view_reports"):
+        st.session_state['page'] = 'Home'
+        st.rerun()
     if not st.session_state.get('logged_in', False):
         if not login():
             st.stop()
