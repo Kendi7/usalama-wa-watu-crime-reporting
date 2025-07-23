@@ -17,6 +17,153 @@ import time
 
 st.set_page_config(page_title="Nairobi Crime Reporting AI App", layout="wide")
 
+# --- Sidebar navigation with Home (Landing Page) ---
+page = st.sidebar.radio("Go to", ["Home", "Report Crime", "View Reports"])
+
+if page == "Home":
+    # --- Custom CSS for styling and animations (from landingpage.py) ---
+    st.markdown("""
+        <style>
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        .animated-text {
+            font-size: 1.5rem;
+            color: #FF4B4B;
+            font-weight: bold;
+            animation: fadeInOut 3s ease-in-out infinite;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .cta-button {
+            display: flex;
+            justify-content: center;
+            margin-top: 32px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # --- Header Section ---
+    st.markdown("""
+        <h1 style='color: #4B8BBE;'>🛡️ Usalama Jijini - Crime Reporting & Safety System</h1>
+        <h4 style='color: gray;'>Helping Nairobi Residents Report, Track, and Prevent Crime in Real-Time</h4>
+        <div class="animated-text">Stay Alert. Stay Safe. Report Instantly.</div>
+        <hr>
+    """, unsafe_allow_html=True)
+
+    # --- Side-by-side layout for Hero Image and User Guidance ---
+    col1, col2 = st.columns(2)
+    with col1:
+        image_path = "assets/hero_safety_image.png"
+        try:
+            image = Image.open(image_path)
+            st.image(image, use_container_width=True, caption="Together for a Safer Nairobi")
+        except Exception:
+            st.warning("Hero image not found. Please add your image to the 'assets' folder with the correct name.")
+        # --- Button Row with Hover Effects ---
+        st.markdown("""
+        <style>
+        .button-row {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            margin-top: 18px;
+            margin-bottom: 8px;
+        }
+        .btn-main {
+            background: linear-gradient(90deg, #ff4b4b 0%, #ffb347 100%);
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 8px;
+            padding: 14px 32px;
+            box-shadow: 0 2px 8px rgba(255,75,75,0.15);
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn-main:hover {
+            background: linear-gradient(90deg, #ffb347 0%, #ff4b4b 100%);
+            color: #fff;
+            transform: scale(1.07);
+            box-shadow: 0 4px 16px rgba(255,75,75,0.25);
+        }
+        .btn-secondary {
+            background: #f0f2f6;
+            color: #4B8BBE;
+            font-weight: 500;
+            font-size: 1em;
+            border: 1.5px solid #4B8BBE;
+            border-radius: 8px;
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s, transform 0.15s;
+        }
+        .btn-secondary:hover {
+            background: #4B8BBE;
+            color: #fff;
+            transform: scale(1.05);
+        }
+        </style>
+        <div class="button-row">
+            <form action="#" method="post" style="display:inline;">
+                <button class="btn-main" type="submit" name="report_crime">🚨 Report Crime</button>
+            </form>
+            <form action="#" method="post" style="display:inline;">
+                <button class="btn-secondary" type="submit" name="view_reports">📊 View Reports</button>
+            </form>
+            <form action="#" method="post" style="display:inline;">
+                <button class="btn-secondary" type="submit" name="about">ℹ️ About</button>
+            </form>
+        </div>
+        """, unsafe_allow_html=True)
+        # Button logic (simulate navigation)
+        report_clicked = st.session_state.get('report_crime_btn', False)
+        view_clicked = st.session_state.get('view_reports_btn', False)
+        about_clicked = st.session_state.get('about_btn', False)
+        # Use hidden Streamlit buttons for navigation
+        col_btns = st.columns([1,1,1])
+        with col_btns[0]:
+            if st.button(" ", key="report_crime_btn", help="Go to the crime reporting form", args=()):
+                st.session_state["_sidebar_radio"] = 1
+                st.experimental_rerun()
+        with col_btns[1]:
+            if st.button(" ", key="view_reports_btn", help="Go to the reports page", args=()):
+                st.session_state["_sidebar_radio"] = 2
+                st.experimental_rerun()
+        with col_btns[2]:
+            if st.button(" ", key="about_btn", help="About this app", args=()):
+                st.info("Usalama Jijini is a community-driven crime reporting and safety system for Nairobi.")
+    with col2:
+        st.markdown("""
+**👋 Welcome to Usalama Jijini!**
+
+Your community-driven tool for staying informed, staying safe, and taking action.
+
+---
+
+### 📸 How to Report a Crime
+
+1. **Take a clear photo** of the crime-related activity.
+2. **Navigate to the sidebar** and click **Report Crime**.
+3. **Upload the photo**, write a short description (optional but helpful).
+4. **Enter your location details** accurately (County, Sub-County, Ward, etc).
+5. **Hit the Report button** to alert local safety authorities.
+
+---
+
+⚠️ **Every report helps build a safer community.**
+
+Whether it's suspicious activity, petty theft, or public disturbance — your voice matters.
+
+---
+
+🚀 **Let’s make Nairobi safer, one report at a time!**
+        """)
+    st.stop()
+
 st.title("Nairobi County Crime Reporting System")
 
 # Initialize session state for reports
@@ -167,7 +314,7 @@ def login():
     return st.session_state.get('logged_in', False)
 
 # Sidebar navigation
-page = st.sidebar.radio("Go to", ["Report Crime", "View Reports"])
+# page = st.sidebar.radio("Go to", ["Report Crime", "View Reports"]) # This line is now redundant as Home handles the sidebar
 
 # Sidebar now only contains the navigation radio button
 
