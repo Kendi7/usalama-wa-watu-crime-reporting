@@ -171,6 +171,7 @@ Whether it's suspicious activity, petty theft, or public disturbance — your vo
     st.stop()
 
 st.title("Nairobi County Crime Reporting System")
+# Fina -branch name(feature/landing-page-home-ui)-- commit -m "feat: add landing page UI for Nairobi crime reporting app"
 
 # Initialize session state for reports
 def init_reports():
@@ -254,6 +255,9 @@ def combine_sentiment_and_urgency(text_sentiment, text_urgency, text_urgency_emo
     else:
         combined_sentiment = image_sentiment
     return combined_sentiment, combined_urgency, combined_urgency_emoji
+#Ken-section-to upload the Yolo Model-branch name(feature/ken-ai-models-loader)-commit -m "feat: add AI model loaders and local image captioning pipeline" (Ken's section)
+
+
 
 # --- Database Setup ---
 def init_db():
@@ -318,6 +322,10 @@ def login():
     # Display admin credentials below the login form
     st.info(f"Admin Login - Username: {ADMIN_USERNAME} | Password: {ADMIN_PASSWORD}")
     return st.session_state.get('logged_in', False)
+
+#Monicah part branch name(feature/monicha-db-auth-setup) commit -m "feat: add SQLite database setup and basic admin login system (Monicha's section)
+"
+
 
 # Sidebar navigation
 # page = st.sidebar.radio("Go to", ["Report Crime", "View Reports"]) # This line is now redundant as Home handles the sidebar
@@ -484,6 +492,9 @@ elif page == "View Reports":
             st.metric("Unique Locations", df['location'].nunique())
         with colD:
             st.metric("Very Negative Sentiment", (df['sentiment'].str.contains('Very Negative')).sum())
+
+    #conso part-branch name(feature/conso-reporting-and-dashboard) commit-m " feat: implement crime reporting form with sentiment analysis and view reports dashboard (Conso's section)
+        
         # --- PDF Download Feature ---
         import io
         from reportlab.lib.pagesizes import letter
@@ -614,3 +625,5 @@ elif page == "View Reports":
                 icon=folium.Icon(color=color)
             ).add_to(m)
         st_folium(m, width=700, height=500) 
+#Victor branch-name-(feature/victor-analytics-export-map) commit -m "feat: add PDF export, report filtering UI, and map visualization for reports (Victor's section)"
+
